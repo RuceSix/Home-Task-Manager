@@ -1,4 +1,4 @@
-# TaskMate
+# Home Task Manager (TaskMate)
 
 App per la gestione delle attività in casa e della spesa. Condividi case, compiti e liste con la famiglia.
 
