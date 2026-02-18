@@ -1,4 +1,4 @@
-import { ApiResponse, User, House, Task, ShoppingItem, HouseMember, HouseInvitation } from '@/types/taskmate';
+import { ApiResponse, User, House, Task, ShoppingItem, HouseMember, HouseInvitation, Child, ChildEvent } from '@/types/taskmate';
 import { supabase } from './supabase';
 
 // Helper per convertire errori Supabase in ApiResponse
@@ -247,8 +247,14 @@ export const apiCall = async (action: string, data: Record<string, unknown> = {}
           .select('*')
           .eq('house_id', houseId as string);
 
-        if (tasksError || shoppingError || membersError) {
-          return handleSupabaseError(tasksError || shoppingError || membersError);
+        const { data: children, error: childrenError } = await supabase
+          .from('children')
+          .select('*')
+          .eq('house_id', houseId as string)
+          .order('created_at', { ascending: false });
+
+        if (tasksError || shoppingError || membersError || childrenError) {
+          return handleSupabaseError(tasksError || shoppingError || membersError || childrenError);
         }
 
         return {
@@ -288,8 +294,162 @@ export const apiCall = async (action: string, data: Record<string, unknown> = {}
             userEmail: m.user_email,
             role: m.role,
             joinedAt: m.joined_at
+          })),
+          children: (children || []).map(c => ({
+            id: c.id,
+            houseId: c.house_id,
+            name: c.name,
+            birthDate: c.birth_date,
+            childType: c.child_type as 'neonato' | 'bambino',
+            notes: c.notes ?? undefined,
+            createdAt: c.created_at,
+            createdById: c.created_by_id
           }))
         };
+      }
+
+      case 'addChild': {
+        const { houseId, name, birthDate, childType, notes, createdById } = data;
+        if (!houseId || !name || !birthDate || !createdById) {
+          return { success: false, message: 'Dati mancanti per aggiungere il bambino' };
+        }
+        const { data: child, error } = await supabase
+          .from('children')
+          .insert({
+            house_id: houseId,
+            name: name as string,
+            birth_date: birthDate as string,
+            child_type: (childType as string) || 'bambino',
+            notes: (notes as string) || null,
+            created_by_id: createdById as string
+          })
+          .select()
+          .single();
+        if (error) return handleSupabaseError(error);
+        return {
+          success: true,
+          child: {
+            id: child.id,
+            houseId: child.house_id,
+            name: child.name,
+            birthDate: child.birth_date,
+            childType: child.child_type,
+            notes: child.notes ?? undefined,
+            createdAt: child.created_at,
+            createdById: child.created_by_id
+          }
+        };
+      }
+
+      case 'updateChild': {
+        const { childId, houseId, name, birthDate, childType, notes } = data;
+        if (!childId || !houseId) {
+          return { success: false, message: 'Dati mancanti per aggiornare il bambino' };
+        }
+        const updates: Record<string, unknown> = {};
+        if (name != null) updates.name = name;
+        if (birthDate != null) updates.birth_date = birthDate;
+        if (childType != null) updates.child_type = childType;
+        if (notes !== undefined) updates.notes = notes || null;
+        const { error } = await supabase
+          .from('children')
+          .update(updates)
+          .eq('id', childId as string)
+          .eq('house_id', houseId as string);
+        if (error) return handleSupabaseError(error);
+        return { success: true };
+      }
+
+      case 'deleteChild': {
+        const { childId, houseId } = data;
+        if (!childId || !houseId) {
+          return { success: false, message: 'Dati mancanti per eliminare il bambino' };
+        }
+        const { error } = await supabase
+          .from('children')
+          .delete()
+          .eq('id', childId as string)
+          .eq('house_id', houseId as string);
+        if (error) return handleSupabaseError(error);
+        return { success: true };
+      }
+
+      case 'getChildEvents': {
+        const { childId, date } = data;
+        if (!childId) return { success: false, message: 'childId mancante' };
+        const dayStart = date ? new Date(date as string).toISOString().split('T')[0] + 'T00:00:00.000Z' : null;
+        const dayEnd = date ? new Date(date as string).toISOString().split('T')[0] + 'T23:59:59.999Z' : null;
+        let query = supabase
+          .from('child_events')
+          .select('*')
+          .eq('child_id', childId as string)
+          .order('created_at', { ascending: false });
+        if (dayStart && dayEnd) {
+          query = query.gte('created_at', dayStart).lte('created_at', dayEnd);
+        }
+        const { data: events, error } = await query;
+        if (error) return handleSupabaseError(error);
+        return {
+          success: true,
+          childEvents: (events || []).map((e: any) => ({
+            id: e.id,
+            childId: e.child_id,
+            houseId: e.house_id,
+            eventType: e.event_type,
+            quantity: e.quantity != null ? Number(e.quantity) : undefined,
+            durationMinutes: e.duration_minutes ?? undefined,
+            note: e.note ?? undefined,
+            createdAt: e.created_at,
+            createdById: e.created_by_id
+          }))
+        };
+      }
+
+      case 'addChildEvent': {
+        const { childId, houseId, eventType, quantity, durationMinutes, note, createdById } = data;
+        if (!childId || !houseId || !eventType || !createdById) {
+          return { success: false, message: 'Dati mancanti per aggiungere evento' };
+        }
+        const { data: ev, error } = await supabase
+          .from('child_events')
+          .insert({
+            child_id: childId,
+            house_id: houseId,
+            event_type: eventType,
+            quantity: quantity != null ? quantity : null,
+            duration_minutes: durationMinutes ?? null,
+            note: note || null,
+            created_by_id: createdById
+          })
+          .select()
+          .single();
+        if (error) return handleSupabaseError(error);
+        return {
+          success: true,
+          childEvent: {
+            id: ev.id,
+            childId: ev.child_id,
+            houseId: ev.house_id,
+            eventType: ev.event_type,
+            quantity: ev.quantity != null ? Number(ev.quantity) : undefined,
+            durationMinutes: ev.duration_minutes ?? undefined,
+            note: ev.note ?? undefined,
+            createdAt: ev.created_at,
+            createdById: ev.created_by_id
+          }
+        };
+      }
+
+      case 'deleteChildEvent': {
+        const { eventId, childId } = data;
+        if (!eventId || !childId) return { success: false, message: 'Dati mancanti' };
+        const { error } = await supabase
+          .from('child_events')
+          .delete()
+          .eq('id', eventId as string)
+          .eq('child_id', childId as string);
+        if (error) return handleSupabaseError(error);
+        return { success: true };
       }
 
       case 'syncHouseData': {

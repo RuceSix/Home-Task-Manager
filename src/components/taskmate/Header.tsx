@@ -1,4 +1,4 @@
-import { Home, Wifi, WifiOff, LogOut, Download, Users, LayoutDashboard } from 'lucide-react';
+import { Home, Wifi, WifiOff, LogOut, Download, Users, Baby } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { User, House } from '@/types/taskmate';
 import { HouseSelector } from './HouseSelector';
@@ -79,14 +79,14 @@ export function Header({
               onManageHouse={onManageHouse}
             />
 
-            {/* Home Hub Link */}
+            {/* Area Bambini Link */}
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/kids')}
               className="flex items-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-xl hover:bg-secondary/80 transition-colors font-medium"
-              title="Home Hub"
+              title="Area Bambini"
             >
-              <LayoutDashboard size={18} />
-              <span className="hidden sm:inline">Home Hub</span>
+              <Baby size={18} />
+              <span className="hidden sm:inline">Bambini</span>
             </button>
 
             {/* Manage Members Link */}

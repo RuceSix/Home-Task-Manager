@@ -61,6 +61,10 @@ export interface ApiResponse {
   houses?: House[];
   house?: House;
   invitations?: HouseInvitation[];
+  children?: Child[];
+  child?: Child;
+  childEvents?: ChildEvent[];
+  childEvent?: ChildEvent;
 }
 
 export interface HouseInvitation {
@@ -71,4 +75,34 @@ export interface HouseInvitation {
   invitedBy: string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
+}
+
+export interface Child {
+  id: string;
+  houseId: string;
+  name: string;
+  birthDate: string;
+  childType: 'neonato' | 'bambino';
+  notes?: string;
+  createdAt: string;
+  createdById: string;
+}
+
+export type ChildEventType = 'latte' | 'allattamento' | 'sonno' | 'pannolino' | 'peso' | 'nota';
+
+export interface ChildEvent {
+  id: string;
+  childId: string;
+  houseId: string;
+  eventType: ChildEventType;
+  quantity?: number;
+  durationMinutes?: number;
+  /** Per pannolino: 'pipi' | 'cacca' | 'entrambi'. Per nota: testo. JSON per dati extra. */
+  note?: string;
+  /** Orario personalizzato (ISO string). Se assente usa createdAt. */
+  eventTime?: string;
+  /** Per sonno: inizio (ISO). Per pannolino: consistenza 'liquida'|'normale'|'dura', colore. */
+  metadata?: string;
+  createdAt: string;
+  createdById: string;
 }

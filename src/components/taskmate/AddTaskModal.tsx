@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { X, CheckSquare, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, CheckSquare, Loader2, Mic, MicOff } from 'lucide-react';
 import { HouseMember } from '@/types/taskmate';
 import { AssigneeSelector } from './AssigneeSelector';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 
 const CATEGORIE_TASK: { value: string; label: string }[] = [
   { value: 'generale', label: 'Generale' },
@@ -42,6 +43,19 @@ export function AddTaskModal({
   const [selectedAssigneeName, setSelectedAssigneeName] = useState(currentUserName);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const { isListening, startListening, stopListening, supported } = useSpeechRecognition({ language: 'it-IT' });
+
+  useEffect(() => {
+    if (!isOpen) setError('');
+  }, [isOpen]);
+
+  const handleVoiceInput = () => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    startListening((text) => setTitle((prev) => (prev ? `${prev} ${text}` : text)));
+  };
 
   if (!isOpen) return null;
 
@@ -109,14 +123,28 @@ export function AddTaskModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Attività</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Es. Fare la spesa, Stirare..."
-              className="input-styled w-full"
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Es. Fare la spesa, Stirare..."
+                className="input-styled flex-1"
+                autoFocus
+              />
+              {supported && (
+                <button
+                  type="button"
+                  onClick={handleVoiceInput}
+                  title={isListening ? 'Ferma registrazione' : 'Inserisci a voce'}
+                  className={`flex items-center justify-center w-12 h-12 rounded-xl shrink-0 transition-colors ${
+                    isListening ? 'bg-destructive/20 text-destructive' : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+                </button>
+              )}
+            </div>
           </div>
 
           <div>
