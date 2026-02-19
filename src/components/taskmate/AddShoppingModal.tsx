@@ -3,6 +3,7 @@ import { X, ShoppingCart, Loader2, Mic, MicOff } from 'lucide-react';
 import { HouseMember } from '@/types/taskmate';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { parseVoiceInput } from '@/utils/voiceParser';
 
 const CATEGORIE_SPESA = [
   'Ortofrutta',
@@ -68,16 +69,36 @@ export function AddShoppingModal({
       return;
     }
     startListening((text) => {
-      const match = text.match(/^(\d+)\s+(.+)$/);
-      if (match) {
-        const q = parseInt(match[1], 10);
-        if (q >= 1 && q <= 999) {
-          setQuantity(q);
-          setItem(match[2].trim());
-          return;
+      const parsed = parseVoiceInput(text);
+      // Usa il risultato solo se è un vero prodotto (item non vuoto).
+      // Se il parser riconosce l'intento shopping ma non trova un item significativo,
+      // facciamo fallback al parsing semplice qui sotto.
+      if (parsed && parsed.type === 'shopping' && parsed.item.trim()) {
+        setItem(parsed.item);
+        if (parsed.quantity) {
+          setQuantity(parsed.quantity);
         }
+        if (parsed.unit && UNITA_MISURA.includes(parsed.unit as any)) {
+          setUnit(parsed.unit);
+        }
+        if (parsed.category && CATEGORIE_SPESA.includes(parsed.category as any)) {
+          setCategory(parsed.category);
+        }
+      } else {
+        // Fallback: parsing semplice se non riconosce come shopping
+        const match = text.match(/^(\d+)\s+(.+)$/);
+        if (match) {
+          const q = parseInt(match[1], 10);
+          if (q >= 1 && q <= 999) {
+            setQuantity(q);
+            setItem(match[2].trim());
+            return;
+          }
+        }
+        // Reset quantità quando non c'è match, altrimenti rimane il valore precedente
+        setQuantity(1);
+        setItem(text);
       }
-      setItem((prev) => (prev ? `${prev} ${text}` : text));
     });
   };
 

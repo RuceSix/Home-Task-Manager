@@ -3,6 +3,7 @@ import { X, CheckSquare, Loader2, Mic, MicOff } from 'lucide-react';
 import { HouseMember } from '@/types/taskmate';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { parseVoiceInput } from '@/utils/voiceParser';
 
 const CATEGORIE_TASK: { value: string; label: string }[] = [
   { value: 'generale', label: 'Generale' },
@@ -54,7 +55,24 @@ export function AddTaskModal({
       stopListening();
       return;
     }
-    startListening((text) => setTitle((prev) => (prev ? `${prev} ${text}` : text)));
+    startListening((text) => {
+      const parsed = parseVoiceInput(text);
+      if (parsed && parsed.type === 'task') {
+        setTitle(parsed.title);
+        if (parsed.dueDate) {
+          setDueDate(parsed.dueDate);
+        }
+        if (parsed.category) {
+          const found = CATEGORIE_TASK.find(c => c.value === parsed.category);
+          if (found) {
+            setCategory(parsed.category);
+          }
+        }
+      } else {
+        // Fallback: se non riconosce come task, metti solo il testo
+        setTitle(text);
+      }
+    });
   };
 
   if (!isOpen) return null;
