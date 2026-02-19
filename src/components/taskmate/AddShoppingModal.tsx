@@ -81,13 +81,15 @@ export function AddShoppingModal({
         if (parsed.unit && UNITA_MISURA.includes(parsed.unit as any)) {
           setUnit(parsed.unit);
         } else {
-          setUnit(parsed.unit || 'pezzi');
+          // Se l'unità non è valida o mancante, usa sempre il fallback
+          setUnit('pezzi');
         }
         // Aggiorna sempre la categoria: se è valida usa quella, altrimenti fallback a 'Altro'
         if (parsed.category && CATEGORIE_SPESA.includes(parsed.category as any)) {
           setCategory(parsed.category);
         } else {
-          setCategory(parsed.category || 'Altro');
+          // Se la categoria non è valida o mancante, usa sempre il fallback
+          setCategory('Altro');
         }
       } else {
         // Fallback: parsing semplice se non riconosce come shopping
