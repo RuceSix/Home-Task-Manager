@@ -74,15 +74,20 @@ export function AddShoppingModal({
       // Se il parser riconosce l'intento shopping ma non trova un item significativo,
       // facciamo fallback al parsing semplice qui sotto.
       if (parsed && parsed.type === 'shopping' && parsed.item.trim()) {
+        // Aggiorna sempre tutti i campi quando il parser restituisce un risultato valido
         setItem(parsed.item);
-        if (parsed.quantity) {
-          setQuantity(parsed.quantity);
-        }
+        setQuantity(parsed.quantity ?? 1);
+        // Aggiorna sempre l'unità: se è valida usa quella, altrimenti fallback a 'pezzi'
         if (parsed.unit && UNITA_MISURA.includes(parsed.unit as any)) {
           setUnit(parsed.unit);
+        } else {
+          setUnit(parsed.unit || 'pezzi');
         }
+        // Aggiorna sempre la categoria: se è valida usa quella, altrimenti fallback a 'Altro'
         if (parsed.category && CATEGORIE_SPESA.includes(parsed.category as any)) {
           setCategory(parsed.category);
+        } else {
+          setCategory(parsed.category || 'Altro');
         }
       } else {
         // Fallback: parsing semplice se non riconosce come shopping

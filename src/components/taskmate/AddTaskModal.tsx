@@ -58,15 +58,23 @@ export function AddTaskModal({
     startListening((text) => {
       const parsed = parseVoiceInput(text);
       if (parsed && parsed.type === 'task') {
+        // Aggiorna sempre tutti i campi quando il parser restituisce un risultato valido
         setTitle(parsed.title);
         if (parsed.dueDate) {
           setDueDate(parsed.dueDate);
         }
+        // Aggiorna sempre la categoria, anche se non trovata nel parser
         if (parsed.category) {
           const found = CATEGORIE_TASK.find(c => c.value === parsed.category);
           if (found) {
             setCategory(parsed.category);
+          } else {
+            // Fallback alla categoria di default se non trovata
+            setCategory(CATEGORIE_TASK[0].value);
           }
+        } else {
+          // Se non c'è categoria nel parser, usa quella di default
+          setCategory(CATEGORIE_TASK[0].value);
         }
       } else {
         // Fallback: se non riconosce come task, metti solo il testo
