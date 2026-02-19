@@ -17,6 +17,9 @@ export interface ParsedShopping {
 
 export type ParsedIntent = ParsedTask | ParsedShopping | null;
 
+// Array di prodotti parsati per lista multipla
+export type ParsedShoppingList = ParsedShopping[];
+
 // Categorie task
 const TASK_CATEGORIES = [
   'generale', 'Casa', 'Cucina', 'Lavoro', 'Bambini', 'Giardino', 'Manutenzione', 'Altro'
@@ -304,4 +307,36 @@ export function parseVoiceInput(text: string): ParsedIntent {
       category
     };
   }
+}
+
+/**
+ * Parsa una frase vocale che può contenere più prodotti separati da virgole, "e", "più", ecc.
+ * Es: "latte, pane, 2 kg mele" -> [latte, pane, mele 2kg]
+ */
+export function parseMultipleShoppingItems(text: string): ParsedShoppingList {
+  if (!text || text.trim().length === 0) return [];
+
+  // Dividi per separatori comuni: virgole, "e", "più", "anche", "poi"
+  const separators = /[,;]\s*|\s+e\s+|\s+più\s+|\s+anche\s+|\s+poi\s+/i;
+  const parts = text.split(separators).map(p => p.trim()).filter(p => p.length > 0);
+
+  // Se c'è solo una parte, prova a parsarla come singolo prodotto
+  if (parts.length === 1) {
+    const parsed = parseVoiceInput(text);
+    if (parsed && parsed.type === 'shopping' && parsed.item.trim()) {
+      return [parsed];
+    }
+    return [];
+  }
+
+  // Parsa ogni parte come prodotto separato
+  const items: ParsedShoppingList = [];
+  for (const part of parts) {
+    const parsed = parseVoiceInput(part);
+    if (parsed && parsed.type === 'shopping' && parsed.item.trim()) {
+      items.push(parsed);
+    }
+  }
+
+  return items;
 }

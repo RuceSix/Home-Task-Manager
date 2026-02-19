@@ -3,7 +3,7 @@ import { X, ShoppingCart, Loader2, Mic, MicOff } from 'lucide-react';
 import { HouseMember } from '@/types/taskmate';
 import { AssigneeSelector } from './AssigneeSelector';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
-import { parseVoiceInput } from '@/utils/voiceParser';
+import { parseVoiceInput, parseMultipleShoppingItems } from '@/utils/voiceParser';
 
 const CATEGORIE_SPESA = [
   'Ortofrutta',
@@ -69,10 +69,36 @@ export function AddShoppingModal({
       return;
     }
     startListening((text) => {
-      const parsed = parseVoiceInput(text);
-      // Usa il risultato solo se è un vero prodotto (item non vuoto).
-      // Se il parser riconosce l'intento shopping ma non trova un item significativo,
-      // facciamo fallback al parsing semplice qui sotto.
+      // Prova prima a parsare come lista multipla (più prodotti)
+      const multipleItems = parseMultipleShoppingItems(text);
+      
+      if (multipleItems.length > 1) {
+        // Se ci sono più prodotti, aggiungili tutti in una volta
+        setIsLoading(true);
+        // Aggiungi tutti i prodotti sequenzialmente
+        multipleItems.forEach((parsed) => {
+          onAdd(
+            parsed.item,
+            parsed.quantity ?? 1,
+            parsed.unit && UNITA_MISURA.includes(parsed.unit as any) ? parsed.unit : 'pezzi',
+            parsed.category && CATEGORIE_SPESA.includes(parsed.category as any) ? parsed.category : 'Altro',
+            selectedAssigneeId,
+            selectedAssigneeName
+          );
+        });
+        setIsLoading(false);
+        // Reset form e chiudi dopo aver aggiunto tutti i prodotti
+        setItem('');
+        setQuantity(1);
+        setUnit(UNITA_MISURA[0]);
+        setCategory(CATEGORIE_SPESA[0]);
+        onClose();
+        return;
+      }
+      
+      // Se c'è un solo prodotto, comportati come prima
+      const parsed = multipleItems.length === 1 ? multipleItems[0] : parseVoiceInput(text);
+      
       if (parsed && parsed.type === 'shopping' && parsed.item.trim()) {
         // Aggiorna sempre tutti i campi quando il parser restituisce un risultato valido
         setItem(parsed.item);
