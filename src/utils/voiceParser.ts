@@ -117,8 +117,9 @@ function parseDate(text: string): string | undefined {
 
 function parseQuantity(text: string): { quantity: number; unit: string; remaining: string } | null {
   // Pattern: "2 litri", "3 kg", "una bottiglia", "un pacchetto"
+  // Supporta anche: "kilogrami", "kilogrammi", "chili", "chilo"
   const patterns = [
-    /(\d+)\s*(litri?|ml|kg|g|bottiglie?|pacchetti?|confezioni?|buste?|barattoli?|scatole?|pezzi?)/i,
+    /(\d+)\s*(litri?|ml|kg|kilogrami|kilogrammi|chili?|chilo|g|bottiglie?|pacchetti?|confezioni?|buste?|barattoli?|scatole?|pezzi?)/i,
     /(un[oa]?|una|uno)\s*(litro|bottiglia|pacchetto|confezione|busta|barattolo|scatola|pezzo)/i,
     /(\d+)/, // Solo numero
   ];
@@ -144,8 +145,8 @@ function parseQuantity(text: string): { quantity: number; unit: string; remainin
         const u = match[2].toLowerCase();
         if (u.includes('litr')) unit = 'litri';
         else if (u.includes('ml')) unit = 'ml';
-        else if (u.includes('kg')) unit = 'kg';
-        else if (u.includes('g') && !u.includes('litr')) unit = 'g';
+        else if (u.includes('kg') || u.includes('kilogram') || u.includes('chilo')) unit = 'kg';
+        else if (u.includes('g') && !u.includes('litr') && !u.includes('kilogram')) unit = 'g';
         else if (u.includes('bottigli')) unit = 'bottiglia';
         else if (u.includes('pacchett')) unit = 'pacchetto';
         else if (u.includes('confezion')) unit = 'confezione';
@@ -188,7 +189,8 @@ export function parseVoiceInput(text: string): ParsedIntent {
 
   if (isShopping || (!isTask && lower.includes('spesa'))) {
     // PARSING SHOPPING
-    const qtyResult = parseQuantity(text);
+    // Cerca pattern "prodotto quantità unità" (es. "mele 2 kg") o "quantità unità prodotto" (es. "2 kg mele")
+    let qtyResult = parseQuantity(text);
     let item = text;
     let quantity = 1;
     let unit = 'pezzi';
@@ -197,7 +199,53 @@ export function parseVoiceInput(text: string): ParsedIntent {
     if (qtyResult) {
       quantity = qtyResult.quantity;
       unit = qtyResult.unit;
+      // Il remaining contiene il testo senza quantità e unità
       item = qtyResult.remaining || text.replace(/^\d+\s*\w*\s*/i, '').trim();
+      
+      // Se il remaining è vuoto o molto corto, prova a cercare pattern inverso: "prodotto quantità unità"
+      // Es: "mele 2 kg" -> parseQuantity trova "2 kg" e remaining diventa "mele" (corretto)
+      // Ma se non trova, prova a cercare il pattern completo
+      if (!item || item.length < 2) {
+        // Prova pattern inverso: cerca "parola quantità unità"
+        const reversePattern = /^(.+?)\s+(\d+)\s*(litri?|ml|kg|kilogrami|kilogrammi|chili?|chilo|g|bottiglie?|pacchetti?|confezioni?|buste?|barattoli?|scatole?|pezzi?)$/i;
+        const reverseMatch = text.match(reversePattern);
+        if (reverseMatch) {
+          item = reverseMatch[1].trim();
+          quantity = parseInt(reverseMatch[2], 10);
+          const u = reverseMatch[3].toLowerCase();
+          if (u.includes('litr')) unit = 'litri';
+          else if (u.includes('ml')) unit = 'ml';
+          else if (u.includes('kg') || u.includes('kilogram') || u.includes('chilo')) unit = 'kg';
+          else if (u.includes('g') && !u.includes('kilogram')) unit = 'g';
+          else if (u.includes('bottigli')) unit = 'bottiglia';
+          else if (u.includes('pacchett')) unit = 'pacchetto';
+          else if (u.includes('confezion')) unit = 'confezione';
+          else if (u.includes('busta')) unit = 'busta';
+          else if (u.includes('barattol')) unit = 'barattolo';
+          else if (u.includes('scatol')) unit = 'scatola';
+          else if (u.includes('pezzo')) unit = 'pezzi';
+        }
+      }
+    } else {
+      // Se non trova quantità, prova comunque pattern inverso "prodotto quantità unità"
+      const reversePattern = /^(.+?)\s+(\d+)\s*(litri?|ml|kg|kilogrami|kilogrammi|chili?|chilo|g|bottiglie?|pacchetti?|confezioni?|buste?|barattoli?|scatole?|pezzi?)$/i;
+      const reverseMatch = text.match(reversePattern);
+      if (reverseMatch) {
+        item = reverseMatch[1].trim();
+        quantity = parseInt(reverseMatch[2], 10);
+        const u = reverseMatch[3].toLowerCase();
+        if (u.includes('litr')) unit = 'litri';
+        else if (u.includes('ml')) unit = 'ml';
+        else if (u.includes('kg') || u.includes('kilogram') || u.includes('chilo')) unit = 'kg';
+        else if (u.includes('g') && !u.includes('kilogram')) unit = 'g';
+        else if (u.includes('bottigli')) unit = 'bottiglia';
+        else if (u.includes('pacchett')) unit = 'pacchetto';
+        else if (u.includes('confezion')) unit = 'confezione';
+        else if (u.includes('busta')) unit = 'busta';
+        else if (u.includes('barattol')) unit = 'barattolo';
+        else if (u.includes('scatol')) unit = 'scatola';
+        else if (u.includes('pezzo')) unit = 'pezzi';
+      }
     }
 
     // Rimuovi parole chiave shopping
